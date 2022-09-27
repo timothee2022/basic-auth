@@ -11,23 +11,22 @@ const { Sequelize, DataTypes } = require('sequelize');
 // connect postgres for local dev environment and prod
 // handle SSL requirements
 // connect with sqlite::memory for testing
-const DATABASE_URL = 'sqlite::memory'
+const DATABASE_URL = 'sqlite::memory';
 
 // Prepare the express app
 const app = express();
 
 // Process JSON input and put the data on req.body
 app.use(express.json());
-const PORT = process.env.PORT || 3002;
 
-  let options = process.env.NODE_ENV === 'production' ? {
-    dialectOptions: {
-      ssl: true,
-      rejectUnauthorized: false,
-    },
-  } : {};
+let options = process.env.NODE_ENV === 'production' ? {
+  dialectOptions: {
+    ssl: true,
+    rejectUnauthorized: false,
+  },
+} : {};
 
-const sequelize = new Sequelize(DATABASE_URL);
+const sequelize = new Sequelize(DATABASE_URL, options);
 
 // Process FORM intput and put the data on req.body
 app.use(express.urlencoded({ extended: true }));
@@ -54,29 +53,30 @@ const Users = sequelize.define('User', {
 // echo '{"username":"john","password":"foo"}' | http post :3000/signup
 // http post :3000/signup username=john password=foo
 app.post('/signup', async (req, res, next) => {
-    console.log('I am here');
-    let { username, password } = req.body;
-    let encryptedPassword = await bcrypt.hash(password, 5);
+  console.log('I am here for signup');
+  let { username, password } = req.body;
+  let encryptedPassword = await bcrypt.hash(password, 5);
 
-    let user = await Users.create({
+  let user = await Users.create({
     username,
     password: encryptedPassword,
-    });
+  });
 
-    res.status(200).send(user);
+  res.status(200).send(user);
 
-  try {
-    req.body.password = await bcrypt.hash(req.body.password, 10);
-    const record = await Users.create(req.body);
-    res.status(200).json(record);
-  } catch (e) { res.status(403).send('Error Creating User'); }
+//   try {
+//     req.body.password = await bcrypt.hash(req.body.password, 10);
+//     const record = await Users.create(req.body);
+//     res.status(200).json(record);
+//   } catch (e) { res.status(403).send('Error Creating User'); }
 });
 
 
 // Signin Route -- login with username and password
 // test with httpie
 // http post :3000/signin -a john:foo
-app.post('/signin', async (req, res) => {
+app.post('/signin', async (req, res, next) => {
+  res.status(200).send(req.user);
 
   /*
     req.headers.authorization is : "Basic sdkjdsljd="
