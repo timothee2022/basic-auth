@@ -6,13 +6,28 @@ const bcrypt = require('bcrypt');
 const base64 = require('base-64');
 const { Sequelize, DataTypes } = require('sequelize');
 
+// NOTE: connected to sqlite::memory out of box for proof of life
+// TODO:
+// connect postgres for local dev environment and prod
+// handle SSL requirements
+// connect with sqlite::memory for testing
+const DATABASE_URL = 'sqlite::memory'
+
 // Prepare the express app
 const app = express();
 
 // Process JSON input and put the data on req.body
 app.use(express.json());
+const PORT = process.env.PORT || 3002;
 
-const sequelize = new Sequelize(process.env.DATABASE_URL);
+  let options = process.env.NODE_ENV === 'production' ? {
+    dialectOptions: {
+      ssl: true,
+      rejectUnauthorized: false,
+    },
+  } : {};
+
+const sequelize = new Sequelize(DATABASE_URL);
 
 // Process FORM intput and put the data on req.body
 app.use(express.urlencoded({ extended: true }));
@@ -26,14 +41,29 @@ const Users = sequelize.define('User', {
   password: {
     type: DataTypes.STRING,
     allowNull: false,
-  }
+  },
 });
+
+// UsersModel
+// .beforeCreate((user) => {
+//     console.log('our user, user');
+// })
 
 // Signup Route -- create a new user
 // Two ways to test this route with httpie
 // echo '{"username":"john","password":"foo"}' | http post :3000/signup
 // http post :3000/signup username=john password=foo
-app.post('/signup', async (req, res) => {
+app.post('/signup', async (req, res, next) => {
+    console.log('I am here');
+    let { username, password } = req.body;
+    let encryptedPassword = await bcrypt.hash(password, 5);
+
+    let user = await Users.create({
+    username,
+    password: encryptedPassword,
+    });
+
+    res.status(200).send(user);
 
   try {
     req.body.password = await bcrypt.hash(req.body.password, 10);
